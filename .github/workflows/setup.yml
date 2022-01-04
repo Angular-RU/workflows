@@ -1,13 +1,37 @@
-name: Reusable workflow example
+name: Angular-RU SDK
 on: [workflow_call]
 
 jobs:
-  example_job:
-    name: Pass input and secrets to my-action
+  setup:
+    name: Checkout and Install dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: '0'
           persist-credentials: false
-      - run: echo "Hello world 123"
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Prepare git
+        if: ${{ env.IS_FORK == 'false' || env.IS_MASTER_BRANCH == 'true' }}
+        run: |
+          git config --global push.default simple
+          git config --global user.name "angular-ru-bot"
+          git config --global user.email "angular-ru@yandex.ru"
+          git config remote.origin.url https://x-access-token:${{ secrets.ANGULAR_RU_BOT_PAT }}@github.com/$GITHUB_REPOSITORY
+
+      - name: Restore cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}--${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
